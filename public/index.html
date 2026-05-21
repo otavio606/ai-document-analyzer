@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocAnalyzer AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0f0a;
+      --bg2: #0f150f;
+      --bg3: #141c14;
+      --surface: #1a231a;
+      --surface2: #1f2b1f;
+      --border: rgba(57, 255, 100, 0.12);
+      --border2: rgba(57, 255, 100, 0.25);
+      --green: #39ff64;
+      --green-dim: #25c44a;
+      --green-dark: #0d3318;
+      --green-glow: rgba(57, 255, 100, 0.15);
+      --text: #e8f5e9;
+      --text-muted: #7a9c7e;
+      --text-dim: #4a6b4e;
+      --mono: 'Space Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* grid noise texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(57,255,100,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(57,255,100,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      grid-template-rows: 100vh;
+      min-height: 100vh;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 20px;
+      gap: 32px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--green-dark);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-icon svg { width: 18px; height: 18px; }
+
+    .logo-text {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+    }
+
+    .logo-text span {
+      display: block;
+      font-family: var(--sans);
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--green);
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .new-chat-btn:hover {
+      background: var(--green-glow);
+      border-color: var(--green);
+    }
+
+    .new-chat-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 0 8px;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .sidebar-item:hover { background: var(--surface); color: var(--text); }
+    .sidebar-item.active { background: var(--green-dark); color: var(--green); }
+
+    .sidebar-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .user-chip:hover { background: var(--surface); }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--green-dark);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .user-plan { font-size: 11px; color: var(--text-muted); }
+
+    /* MAIN */
+    .main {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .model-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .model-badge:hover { border-color: var(--border2); }
+
+    .model-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border2); }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    /* CHAT AREA */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--surface2) transparent;
+    }
+
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-track { background: transparent; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+
+    /* WELCOME STATE */
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 24px;
+      text-align: center;
+      padding: 60px 0;
+    }
+
+    .welcome-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: var(--green-dark);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .welcome-icon svg { width: 32px; height: 32px; }
+
+    .welcome h1 {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: -0.01em;
+    }
+
+    .welcome p {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 400px;
+      line-height: 1.7;
+    }
+
+    .suggestion-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-width: 520px;
+    }
+
+    .chip {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chip:hover { border-color: var(--green); color: var(--green); background: var(--green-dark); }
+
+    /* MESSAGES */
+    .message { display: flex; flex-direction: column; gap: 8px; max-width: 780px; width: 100%; margin: 0 auto; }
+
+    .message.user { align-items: flex-end; }
+    .message.assistant { align-items: flex-start; }
+
+    .msg-bubble {
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.7;
+      max-width: 85%;
+    }
+
+    .user .msg-bubble {
+      background: var(--green-dark);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-bottom-right-radius: 4px;
+    }
+
+    .assistant .msg-bubble {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      padding: 0 4px;
+    }
+
+    /* RESULT CARD */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      width: 100%;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .result-header-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .result-header span {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--green);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .result-body { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+
+    .result-section { display: flex; flex-direction: column; gap: 8px; }
+
+    .result-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    .result-section-content {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .result-points { display: flex; flex-direction: column; gap: 6px; }
+
+    .result-point {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .result-point::before {
+      content: '›';
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: -1px;
+    }
+
+    .result-answer {
+      background: var(--green-dark);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* LOADING */
+    .loading-dots {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: bounce 1.2s infinite;
+    }
+
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* INPUT AREA */
+    .input-area {
+      flex-shrink: 0;
+      padding: 20px 32px 28px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .input-wrapper {
+      max-width: 780px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      transition: border-color 0.2s;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--border2);
+      box-shadow: 0 0 0 3px rgba(57, 255, 100, 0.06);
+    }
+
+    .question-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      resize: none;
+      height: 40px;
+      min-height: 40px;
+    }
+
+    .question-input::placeholder { color: var(--text-dim); }
+
+    .doc-input {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+      outline: none;
+      color: var(--text-muted);
+      font-family: var(--sans);
+      font-size: 13px;
+      resize: none;
+      height: 100px;
+      padding: 12px 14px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .doc-input:focus { border-color: var(--border2); color: var(--text); outline: none; }
+    .doc-input::placeholder { color: var(--text-dim); }
+
+    .input-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .input-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    .send-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 20px;
+      background: var(--green);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #0a0f0a;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    .send-btn:hover { opacity: 0.88; }
+    .send-btn:active { transform: scale(0.97); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn svg { width: 15px; height: 15px; }
+
+    .divider {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+    }
+
+    /* ANIMATIONS */
+    .fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* SCROLLBAR */
+    .chat-area { scroll-behavior: smooth; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#39ff64" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        DocAnalyzer
+        <span>powered by gemini</span>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" onclick="resetChat()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Nova análise
+    </button>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Recentes</div>
+      <div class="sidebar-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Análise atual
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Recursos</div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Como funciona
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        API Docs
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="avatar">US</div>
+        <div class="user-info">
+          <div class="user-name">Usuário</div>
+          <div class="user-plan">Plano gratuito</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="model-badge">
+        <div class="model-dot"></div>
+        gemini-1.5-flash
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" title="Compartilhar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
+        <button class="icon-btn" title="Configurações">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="chat-area" id="chatArea">
+      <!-- WELCOME -->
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#39ff64" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <h1>O que você quer analisar?</h1>
+        <p>Cole qualquer texto — contrato, artigo, relatório — e faça perguntas sobre ele. A IA responde em segundos.</p>
+        <div class="suggestion-chips">
+          <div class="chip" onclick="setQuestion('Qual é o ponto mais importante?')">Ponto mais importante</div>
+          <div class="chip" onclick="setQuestion('Quais são os riscos mencionados?')">Riscos mencionados</div>
+          <div class="chip" onclick="setQuestion('Faça um resumo executivo')">Resumo executivo</div>
+          <div class="chip" onclick="setQuestion('Quais são as obrigações das partes?')">Obrigações das partes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT -->
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea
+          id="docInput"
+          class="doc-input"
+          placeholder="Cole o texto do documento aqui..."
+        ></textarea>
+        <div class="divider" style="width:100%; height:1px; background: var(--border); margin: 2px 0;"></div>
+        <textarea
+          id="questionInput"
+          class="question-input"
+          placeholder="Faça uma pergunta sobre o documento..."
+          rows="1"
+          onkeydown="handleKey(event)"
+        ></textarea>
+        <div class="input-footer">
+          <span class="input-hint" id="charCount">0 caracteres</span>
+          <button class="send-btn" id="sendBtn" onclick="analyze()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            Analisar
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API_URL = 'http://localhost:3000/api/analyze';
+
+  const docInput = document.getElementById('docInput');
+  const questionInput = document.getElementById('questionInput');
+  const chatArea = document.getElementById('chatArea');
+  const sendBtn = document.getElementById('sendBtn');
+  const charCount = document.getElementById('charCount');
+  const welcome = document.getElementById('welcome');
+
+  let hasMessages = false;
+
+  docInput.addEventListener('input', () => {
+    charCount.textContent = docInput.value.length + ' caracteres';
+  });
+
+  questionInput.addEventListener('input', () => {
+    questionInput.style.height = 'auto';
+    questionInput.style.height = Math.min(questionInput.scrollHeight, 100) + 'px';
+  });
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      analyze();
+    }
+  }
+
+  function setQuestion(q) {
+    questionInput.value = q;
+    questionInput.focus();
+  }
+
+  function resetChat() {
+    chatArea.innerHTML = '';
+    chatArea.appendChild(welcome);
+    welcome.style.display = 'flex';
+    docInput.value = '';
+    questionInput.value = '';
+    charCount.textContent = '0 caracteres';
+    hasMessages = false;
+  }
+
+  function addMessage(role, content) {
+    if (!hasMessages) {
+      welcome.style.display = 'none';
+      hasMessages = true;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = `message ${role} fade-in`;
+
+    const label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = role === 'user' ? 'você' : 'docanalyzer';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = content;
+
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+    chatArea.appendChild(wrap);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return wrap;
+  }
+
+  function addLoading() {
+    if (!hasMessages) {
+      welcome.style.display = 'none';
+      hasMessages = true;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'message assistant fade-in';
+
+    const label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = 'docanalyzer';
+
+    const dots = document.createElement('div');
+    dots.className = 'loading-dots';
+    dots.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+
+    wrap.appendChild(label);
+    wrap.appendChild(dots);
+    chatArea.appendChild(wrap);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return wrap;
+  }
+
+  function addResult(data) {
+    const wrap = document.createElement('div');
+    wrap.className = 'message assistant fade-in';
+
+    const label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = 'docanalyzer';
+
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.style.width = '100%';
+
+    card.innerHTML = `
+      <div class="result-header">
+        <div class="result-header-dot"></div>
+        <span>análise concluída</span>
+      </div>
+      <div class="result-body">
+        <div class="result-section">
+          <div class="result-section-label">Resumo</div>
+          <div class="result-section-content">${data.resumo}</div>
+        </div>
+        <div class="result-section">
+          <div class="result-section-label">Pontos principais</div>
+          <div class="result-points">
+            ${data.pontos_principais.map(p => `<div class="result-point">${p}</div>`).join('')}
+          </div>
+        </div>
+        <div class="result-section">
+          <div class="result-section-label">Resposta</div>
+          <div class="result-answer">${data.resposta}</div>
+        </div>
+      </div>
+    `;
+
+    wrap.appendChild(label);
+    wrap.appendChild(card);
+    chatArea.appendChild(wrap);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  async function analyze() {
+    const text = docInput.value.trim();
+    const question = questionInput.value.trim();
+
+    if (!text) {
+      docInput.focus();
+      docInput.style.borderColor = 'rgba(255,80,80,0.5)';
+      setTimeout(() => docInput.style.borderColor = '', 1500);
+      return;
+    }
+
+    const userMsg = question || 'Quais são os pontos mais importantes?';
+    addMessage('user', `📄 Documento: ${text.substring(0, 80)}${text.length > 80 ? '...' : ''}\n\n❓ ${userMsg}`);
+
+    questionInput.value = '';
+    questionInput.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    const loading = addLoading();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, question })
+      });
+
+      if (!res.ok) throw new Error('Erro na API');
+      const data = await res.json();
+
+      loading.remove();
+      addResult(data);
+    } catch (err) {
+      loading.remove();
+      addMessage('assistant', '⚠️ Não consegui conectar com o servidor. Verifique se ele está rodando em localhost:3000.');
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
